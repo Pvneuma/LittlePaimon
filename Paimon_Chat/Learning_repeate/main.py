@@ -40,12 +40,12 @@ async def check_accounts(event: GroupMessageEvent) -> bool:
 
 async def get_answer(event: GroupMessageEvent, state: T_State) -> bool:
     # 不响应被屏蔽的人的信息
+    to_learn = True
     if event.user_id in config.paimon_chat_ban:
-        return False
+        to_learn = False
     elif not checkGroup(event):  # 判断群组
         return False
     chat: Chat = Chat(event)
-    to_learn = True
     # 多账号登陆，且在同一群中时；避免一条消息被处理多次
     with message_id_lock:
         message_id = event.message_id
@@ -95,7 +95,8 @@ async def is_shutup(self_id: int, group_id: int) -> bool:
 async def _(bot: Bot, event: GroupMessageEvent, state: T_State):
     delay = random.randint(2, 4)
     for item in state['answers']:
-        logger.info(f'repeater：派蒙[{event.self_id}]准备向群[{event.group_id}]回复[{item}]')
+        logger.info(
+            f'repeater：派蒙[{event.self_id}]准备向群[{event.group_id}]回复[{item}]')
 
         await asyncio.sleep(delay)
         try:
@@ -106,7 +107,8 @@ async def _(bot: Bot, event: GroupMessageEvent, state: T_State):
             if not shutup:  # 说明这条消息失效了
                 logger.info('repeater | bot [{}] ready to ban [{}] in group [{}]'.format(
                     event.self_id, str(item), event.group_id))
-                Chat.ban(event.group_id, event.self_id, str(item), 'ActionFailed')
+                Chat.ban(event.group_id, event.self_id,
+                         str(item), 'ActionFailed')
                 break
         delay = random.randint(2, 4)
 
@@ -135,7 +137,8 @@ async def _(bot: Bot, event: GroupMessageEvent):
         raw_message += re.sub(r'(\[CQ\:.+)(?:,url=*)(\])',
                               r'\1\2', raw_reply)
 
-    logger.info(f'repeater：派蒙[{event.self_id}] ready to ban [{raw_message}] in group [{event.group_id}]')
+    logger.info(
+        f'repeater：派蒙[{event.self_id}] ready to ban [{raw_message}] in group [{event.group_id}]')
 
     if Chat.ban(event.group_id, event.self_id, raw_message, str(event.user_id)):
         msg_send = ['派蒙知道错了...达咩!', '派蒙不会再这么说了...', '果面呐噻,派蒙说错话了...']
@@ -202,7 +205,8 @@ drink_msg = on_message(
 @drink_msg.handle()
 async def _(bot: Bot, event: GroupMessageEvent):
     drunk_duration = random.randint(60, 600)
-    logger.info(f'repeater：派蒙[{event.self_id}]即将在群[{event.group_id}]喝醉，在[{drunk_duration}秒]后醒来')
+    logger.info(
+        f'repeater：派蒙[{event.self_id}]即将在群[{event.group_id}]喝醉，在[{drunk_duration}秒]后醒来')
     Chat.drink(event.group_id)
     try:
         await drink_msg.send('呀，旅行者。你今天走起路来，怎么看着摇摇晃晃的？')
@@ -383,6 +387,8 @@ add_ban_word.__paimon_help__ = {
     "introduce": "禁用某些不想让派蒙说的关键词, 括号(英语)内部为关键词内容",
     "priority":  99
 }
+
+
 @add_ban_word.handle()
 async def _(bot: Bot, event: GroupMessageEvent):
     msg = str(event.message)
@@ -402,13 +408,15 @@ del_ban_word = on_message(
     rule=to_me() & Rule(checkGroup) & keyword('删除禁用词', '可以说'),
     priority=4,
     block=True,
-    permission = permission.GROUP_ADMIN | permission.GROUP_OWNER | SUPERUSER
+    permission=permission.GROUP_ADMIN | permission.GROUP_OWNER | SUPERUSER
 )
 del_ban_word.__paimon_help__ = {
     "usage":     "@派蒙 <可以说> (关键词)",
     "introduce": "让派蒙可以说某些关键词, 括号(英语)内部为关键词内容",
     "priority":  99
 }
+
+
 @del_ban_word.handle()
 async def _(bot: Bot, event: GroupMessageEvent):
     msg = str(event.message)
@@ -432,13 +440,15 @@ check_ban_word = on_message(
     rule=to_me() & Rule(checkGroup) & keyword('查看禁用词', '哪些不准说'),
     priority=4,
     block=True,
-    permission = permission.GROUP_ADMIN | permission.GROUP_OWNER | SUPERUSER
+    permission=permission.GROUP_ADMIN | permission.GROUP_OWNER | SUPERUSER
 )
 check_ban_word.__paimon_help__ = {
     "usage":     "@派蒙 <查看禁用词>",
     "introduce": "查看当前的禁用词内容",
     "priority":  99
 }
+
+
 @check_ban_word.handle()
 async def _(bot: Bot, event: GroupMessageEvent):
     msg = '当前的违禁词: '
