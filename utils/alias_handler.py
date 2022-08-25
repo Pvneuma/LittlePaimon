@@ -22,7 +22,7 @@ def get_id_by_name(name: str):
         :return: id字符串
     """
     alias_file = load_json(path=Path(__file__).parent / 'json_data' / 'alias.json')
-    name_list = alias_file['roles']
+    name_list = alias_file['角色']
     for role_id, alias in name_list.items():
         if name in alias:
             return role_id
@@ -35,11 +35,8 @@ def get_name_by_id(role_id: str):
         :return: 角色名字符串
     """
     alias_file = load_json(path=Path(__file__).parent / 'json_data' / 'alias.json')
-    name_list = alias_file['roles']
-    if role_id in name_list:
-        return name_list[role_id][0]
-    else:
-        return None
+    name_list = alias_file['角色']
+    return name_list[role_id][0] if role_id in name_list else None
 
 
 def get_alias_by_name(name: str):
@@ -49,14 +46,11 @@ def get_alias_by_name(name: str):
         :return: 别名列表
     """
     alias_file = load_json(path=Path(__file__).parent / 'json_data' / 'alias.json')
-    name_list = alias_file['roles']
-    for r in name_list.values():
-        if name in r:
-            return r
-    return None
+    name_list = alias_file['角色']
+    return next((r for r in name_list.values() if name in r), None)
 
 
-def get_match_alias(msg: str, type: str = 'roles', single_to_dict: bool = False) -> Union[str, list, dict]:
+def get_match_alias(msg: str, type: str = '角色', single_to_dict: bool = False) -> Union[str, list, dict]:
     """
         根据字符串消息，获取与之相似或匹配的角色、武器、原魔名
         :param msg: 消息
@@ -66,9 +60,9 @@ def get_match_alias(msg: str, type: str = 'roles', single_to_dict: bool = False)
     """
     alias_file = load_json(path=Path(__file__).parent / 'json_data' / 'alias.json')
     alias_list = alias_file[type]
-    if msg in ['风主', '岩主', '雷主']:
+    if msg in {'风主', '岩主', '雷主'}:
         return msg
-    elif type == 'roles':
+    elif type == '角色':
         possible = {}
         for role_id, alias in alias_list.items():
             match_list = difflib.get_close_matches(msg, alias, cutoff=0.6, n=3)
@@ -78,8 +72,9 @@ def get_match_alias(msg: str, type: str = 'roles', single_to_dict: bool = False)
                 possible[alias[0]] = role_id
         if len(possible) == 1:
             return {list(possible.keys())[0]: possible[list(possible.keys())[0]]} if single_to_dict else list(possible.keys())[0]
+
         return possible
-    elif type == 'weapons':
+    elif type in {'武器', '圣遗物'}:
         possible = []
         for name, alias in alias_list.items():
             match_list = difflib.get_close_matches(msg, alias, cutoff=0.4, n=3)
@@ -88,6 +83,6 @@ def get_match_alias(msg: str, type: str = 'roles', single_to_dict: bool = False)
             elif match_list:
                 possible.append(name)
         return possible
-    elif type == 'monsters':
+    elif type == '原魔':
         match_list = difflib.get_close_matches(msg, alias_list, cutoff=0.4, n=5)
         return match_list[0] if len(match_list) == 1 else match_list

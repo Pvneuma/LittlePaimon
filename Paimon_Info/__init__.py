@@ -1,3 +1,4 @@
+import contextlib
 import datetime
 import random
 import re
@@ -360,7 +361,7 @@ async def _(event: MessageEvent, state: T_State):
         name = replace_all(name.extract_plain_text().strip().replace('ysc', ''), state['uid'])
         if name == 'q':
             await ysc.finish()
-    match_alias = get_match_alias(name, 'roles', True)
+    match_alias = get_match_alias(name, '角色', True)
     if len(match_alias) == 1:
         state['choice'] = match_alias
     else:
@@ -497,12 +498,16 @@ async def mys_sign_handler(event: MessageEvent, msg: Message = CommandArg()):
     else:
         sign_day = sign_info['data']['total_sign_day']
         sign_action = await sign(uid)
-        if isinstance(sign_action, str):
-            await mys_sign.finish(sign_action, at_sender=True)
-        else:
-            await mys_sign.finish(
-                f'签到成功,获得的奖励为:\n{sign_list["data"]["awards"][sign_day]["name"]} * {sign_list["data"]["awards"][sign_day]["cnt"]}',
-                at_sender=True)
+        for _ in range(5):
+            if isinstance(sign_action, dict):
+                if sign_action['data']['success'] == 0:
+                    await mys_sign.finish(
+                        f'签到成功,获得的奖励为:\n{sign_list["data"]["awards"][sign_day]["name"]} * {sign_list["data"]["awards"][sign_day]["cnt"]}',
+                        at_sender=True)
+                else:
+                    await sleep(random.randint(3, 6))
+            else:
+                await mys_sign.finish(sign_action, at_sender=True)
 
 
 @mys_sign_auto.handle()
@@ -605,7 +610,7 @@ async def _(event: MessageEvent, state: T_State, msg: Message = CommandArg()):
     if msg.startswith(('a', '全部', '所有', '查看')):
         state['role'] = 'all'
     else:
-        match_alias = get_match_alias(msg, 'roles', True)
+        match_alias = get_match_alias(msg, '角色', True)
         if match_alias:
             state['role'] = match_alias if isinstance(match_alias, str) else tuple(match_alias.keys())[0]
         else:
@@ -659,25 +664,37 @@ async def auto_sign():
         logger.info('---派蒙开始执行米游社自动签到---')
         sign_list = await get_sign_list()
         for user_id, uid, remind_id in data:
-            await sleep(random.randint(3, 8))
-            sign_result = await sign(uid)
-            if not isinstance(sign_result, str):
-                await sleep(1)
-                sign_info = await get_sign_info(uid)
-                sign_day = sign_info['data']['total_sign_day'] - 1
-                if remind_id.startswith('q'):
-                    await get_bot().send_private_msg(user_id=remind_id[1:],
-                                                     message=f'你的uid{uid}自动签到成功!签到奖励为{sign_list["data"]["awards"][sign_day]["name"]}*{sign_list["data"]["awards"][sign_day]["cnt"]}')
-                else:
-                    ann[remind_id]['成功'].append(
-                        f'.UID{uid}-{sign_list["data"]["awards"][sign_day]["name"]}*{sign_list["data"]["awards"][sign_day]["cnt"]}')
+            sign_info = await get_sign_info(uid)
+            if isinstance(sign_info, str):
+                with contextlib.suppress(Exception):
+                    await delete_auto_sign(user_id, uid)
+                    if remind_id.startswith('q'):
+                        await get_bot().send_private_msg(user_id=remind_id[1:],
+                                                         message=f'你的uid{uid}签到失败，请重新绑定cookie再开启自动签到')
+                    else:
+                        ann[remind_id]['失败'].append(f'.UID{uid}')
+            elif sign_info['data']['is_sign']:
+                logger.info(f'---qq{user_id}的UID{uid}已经签过，跳过---')
             else:
-                await delete_auto_sign(user_id, uid)
-                if remind_id.startswith('q'):
-                    await get_bot().send_private_msg(user_id=remind_id[1:],
-                                                     message=f'你的uid{uid}签到失败，请重新绑定cookie再开启自动签到')
-                else:
-                    ann[remind_id]['失败'].append(f'.UID{uid}')
+                for _ in range(5):
+                    sign_result = await sign(uid)
+                    if isinstance(sign_result, dict):
+                        # success为0则说明没有出现验证码，不为0则有验证码，等待5-10秒再重试，重试最多5次
+                        if sign_result['data']['success'] == 0:
+                            await sleep(1)
+                            sign_info = await get_sign_info(uid)
+                            sign_day = sign_info['data']['total_sign_day'] - 1
+                            with contextlib.suppress(Exception):
+                                if remind_id.startswith('q'):
+                                    await get_bot().send_private_msg(user_id=remind_id[1:],
+                                                                     message=f'你的uid{uid}自动签到成功!签到奖励为{sign_list["data"]["awards"][sign_day]["name"]}*{sign_list["data"]["awards"][sign_day]["cnt"]}')
+                                else:
+                                    ann[remind_id]['成功'].append(
+                                        f'.UID{uid}-{sign_list["data"]["awards"][sign_day]["name"]}*{sign_list["data"]["awards"][sign_day]["cnt"]}')
+                            break
+                        else:
+                            await sleep(random.randint(5, 10))
+            await sleep(random.randint(20, 35))
         for group_id, content in ann.items():
             group_str = '米游社自动签到结果：\n'
             for type, ann_list in content.items():
@@ -687,7 +704,7 @@ async def auto_sign():
                         group_str += str(ann_list.index(u) + 1) + u + '\n'
             try:
                 await get_bot().send_group_msg(group_id=group_id, message=group_str)
-                await sleep(random.randint(3, 8))
+                await sleep(random.randint(5, 10))
             except Exception as e:
                 logger.error(f'米游社签到结果发送失败：{e}')
 
@@ -699,23 +716,31 @@ async def coin_auto_sign():
     if data:
         logger.info('---派蒙开始执行米游币自动获取---')
         for user_id, uid, remind_id in data:
+            await sleep(random.randint(20, 35))
             sk = await get_private_stoken(uid, key='uid')
-            stoken = sk[0][4]
-            get_coin_task = MihoyoBBSCoin(stoken, user_id, uid)
-            data = await get_coin_task.run()
-            if get_coin_task.state is False:
+            try:
+                stoken = sk[0][4]
+                get_coin_task = MihoyoBBSCoin(stoken, user_id, uid)
+                data = await get_coin_task.run()
+                if get_coin_task.state is False:
+                    await delete_coin_auto_sign(user_id, uid)
+                    if remind_id.startswith('q'):
+                        await get_bot().send_private_msg(user_id=remind_id[1:],
+                                                        message=f'你的uid{uid}米游币获取失败，请重新绑定stoken再开启')
+                    else:
+                        ann[remind_id]['失败'].append(f'.UID{uid}')
+                else:
+                    if remind_id.startswith('q'):
+                        await get_bot().send_private_msg(user_id=remind_id[1:],
+                                                        message=f'你的uid{uid}米游币自动获取成功')
+                    else:
+                        ann[remind_id]['成功'].append(f'.UID{uid}')
+            except:
                 await delete_coin_auto_sign(user_id, uid)
                 if remind_id.startswith('q'):
                     await get_bot().send_private_msg(user_id=remind_id[1:],
-                                                     message=f'你的uid{uid}米游币获取失败，请重新绑定cookie再开启')
-                else:
-                    ann[remind_id]['失败'].append(f'.UID{uid}')
-            else:
-                if remind_id.startswith('q'):
-                    await get_bot().send_private_msg(user_id=remind_id[1:],
-                                                     message=f'你的uid{uid}米游币自动获取成功')
-                else:
-                    ann[remind_id]['成功'].append(f'.UID{uid}')
+                                    message=f'你的uid{uid}米游币获取失败，请重新绑定stoken再开启')
+                logger.info('该成员未绑定stoken 获取失败, 已删除自动获取任务')
         for group_id, content in ann.items():
             group_str = '米游币自动获取结果：\n'
             for type, ann_list in content.items():
@@ -784,7 +809,7 @@ async def check_note():
                                                                message=f'[CQ:at,qq={user_id}]⚠️你的树脂已经达到了{now_data["data"]["current_resin"]},记得清理哦!⚠️')
                         except Exception as e:
                             logger.error(f'---派蒙发送树脂提醒失败:{e}---')
-                await sleep(3)
+                await sleep(random.randint(8, 15))
 
 
 @scheduler.scheduled_job('cron', hour=0, misfire_grace_time=10)
