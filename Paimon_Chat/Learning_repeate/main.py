@@ -118,7 +118,7 @@ async def is_reply(bot: Bot, event: GroupMessageEvent) -> bool:
 
 
 ban_msg = on_message(
-    rule=to_me() & keyword('不可以', '达咩', '不行', 'no') & Rule(is_reply, checkGroup),
+    rule=to_me() & keyword('不可以', '达咩', '不行', 'no', '不') & Rule(is_reply, checkGroup),
     priority=5,
     block=True,
     permission=permission.GROUP_OWNER | permission.GROUP_ADMIN | SUPERUSER
