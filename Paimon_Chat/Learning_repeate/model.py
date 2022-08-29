@@ -379,8 +379,17 @@ class Chat:
                 target_id = random.choice(
                     Chat._message_dict[group_id])['user_id']
                 speak_list.append(Message('[CQ:poke,qq={}]'.format(target_id)))
-
-            return bot_id, group_id, speak_list
+            final_speak_list=[]
+            for msg in speak_list:
+                flag=True
+                msg_text=msg.extract_plain_text()
+                for word in Chat.chat_word_ban:
+                    if word in msg_text:
+                        flag=False
+                        break
+                if flag:
+                    final_speak_list.append(msg)
+            return bot_id, group_id, final_speak_list
 
         return None
 
