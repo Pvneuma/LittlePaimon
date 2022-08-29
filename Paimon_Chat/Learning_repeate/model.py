@@ -379,6 +379,7 @@ class Chat:
                 target_id = random.choice(
                     Chat._message_dict[group_id])['user_id']
                 speak_list.append(Message('[CQ:poke,qq={}]'.format(target_id)))
+            #主动发言里是否有禁用词，有的话不发
             final_speak_list=[]
             for msg in speak_list:
                 flag=True
