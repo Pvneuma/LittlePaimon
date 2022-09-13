@@ -141,7 +141,7 @@ async def _(bot: Bot, event: GroupMessageEvent):
         f'repeater：派蒙[{event.self_id}] ready to ban [{raw_message}] in group [{event.group_id}]')
 
     if Chat.ban(event.group_id, event.self_id, raw_message, str(event.user_id)):
-        msg_send = ['派蒙知道错了...达咩!', '派蒙不会再这么说了...', '果面呐噻,派蒙说错话了...']
+        msg_send = ['胡桃知道错了...果咩!', '胡桃不会再这么说了...', '果咩呐噻,胡桃说错话了...']
         await ban_msg.finish(random.choice(msg_send))
 
 
@@ -166,7 +166,7 @@ async def _(bot: Bot, event: GroupMessageEvent):
         f'repeater：派蒙[{event.self_id}]把群[{event.group_id}]最后的回复ban了')
 
     if Chat.ban(event.group_id, event.self_id, '', str(event.user_id)):
-        msg_send = ['派蒙知道错了...达咩!', '派蒙不会再这么说了...', '果面呐噻,派蒙说错话了...']
+        msg_send = ['胡桃知道错了...果咩!', '胡桃不会再这么说了...', '果咩呐噻,胡桃说错话了...']
         await ban_msg_latest.finish(random.choice(msg_send))
 
 
