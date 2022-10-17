@@ -60,7 +60,7 @@ async def GroupNewMember(bot: Bot, event: GroupIncreaseNoticeEvent):
     elif event.group_id not in config.paimon_greet_ban:
         await sleep(random.randint(4, 8))
         await bot.send_group_msg(group_id=event.group_id, message=Message(
-            MessageSegment.at(event.user_id) + MessageSegment.text("欢迎新旅行者哦~\n") + greet_emoticon))
+            MessageSegment.at(event.user_id) + MessageSegment.text("欢迎新骑士君哦~\n") + greet_emoticon))
 
 
 @notice_handle.handle()
